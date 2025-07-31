@@ -1,72 +1,88 @@
 package nl.novi.techiteasy1121.services;
 
-import nl.novi.techiteasy1121.Dtos.TelevisionDto;
-import nl.novi.techiteasy1121.Dtos.TelevisionInputDto;
+import nl.novi.techiteasy1121.dtos.TelevisionDto;
+import nl.novi.techiteasy1121.dtos.TelevisionInputDto;
 import nl.novi.techiteasy1121.exceptions.RecordNotFoundException;
 import nl.novi.techiteasy1121.models.Television;
+import nl.novi.techiteasy1121.repositories.CIModuleRepository;
+import nl.novi.techiteasy1121.repositories.RemoteControllerRepository;
 import nl.novi.techiteasy1121.repositories.TelevisionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-// Zet de annotatie boven de klasse, zodat Spring het herkent en inleest als Service.
 @Service
 public class TelevisionService {
 
-    // We importeren de repository nu in de service in plaats van in de controller.
-    // dit mag met constructor injection of autowire.
     private final TelevisionRepository televisionRepository;
 
-    public TelevisionService(TelevisionRepository televisionRepository){
+    private final RemoteControllerRepository remoteControllerRepository;
+
+    private final RemoteControllerService remoteControllerService;
+
+    private final CIModuleRepository ciModuleRepository;
+
+    private final CIModuleService ciModuleService;
+
+    public TelevisionService(TelevisionRepository televisionRepository,
+                             RemoteControllerRepository remoteControllerRepository,
+                             RemoteControllerService remoteControllerService,
+                             CIModuleRepository ciModuleRepository,
+                             CIModuleService ciModuleService
+                             ){
         this.televisionRepository = televisionRepository;
+        this.remoteControllerRepository = remoteControllerRepository;
+        this.remoteControllerService = remoteControllerService;
+        this.ciModuleRepository = ciModuleRepository;
+        this.ciModuleService = ciModuleService;
     }
 
-    // Vanuit de repository kunnen we een lijst van Televisions krijgen, maar de communicatie container tussen Service en
-    // Controller is de Dto. We moeten de Televisions dus vertalen naar TelevisionDtos. Dit moet een voor een, omdat
-    // de translateToDto() methode geen lijst accepteert als argument, dus gebruiken we een for-loop.
     public List<TelevisionDto> getAllTelevisions() {
         List<Television> tvList = televisionRepository.findAll();
-        List<TelevisionDto> tvDtoList = new ArrayList<>();
-
-        for(Television tv : tvList) {
-            TelevisionDto dto = transferToDto(tv);
-            tvDtoList.add(dto);
-        }
-        return tvDtoList;
+        return transferTvListToDtoList(tvList);
     }
 
-    // Vanuit de repository kunnen we een lijst van Televisions met een bepaalde brand krijgen, maar de communicatie
-    // container tussen Service en Controller is de Dto. We moeten de Televisions dus vertalen naar TelevisionDtos. Dit
-    // moet een voor een, omdat de translateToDto() methode geen lijst accepteert als argument, dus gebruiken we een for-loop.
     public List<TelevisionDto> getAllTelevisionsByBrand(String brand) {
         List<Television> tvList = televisionRepository.findAllTelevisionsByBrandEqualsIgnoreCase(brand);
+        return transferTvListToDtoList(tvList);
+    }
+
+    public List<TelevisionDto> transferTvListToDtoList(List<Television> televisions){
         List<TelevisionDto> tvDtoList = new ArrayList<>();
 
-        for(Television tv : tvList) {
+        for(Television tv : televisions) {
             TelevisionDto dto = transferToDto(tv);
+            if(tv.getCiModule() != null){
+                dto.setCiModuleDto(ciModuleService.transferToDto(tv.getCiModule()));
+            }
+            if(tv.getRemoteController() != null){
+                dto.setRemoteControllerDto(remoteControllerService.transferToDto(tv.getRemoteController()));
+            }
             tvDtoList.add(dto);
         }
         return tvDtoList;
     }
 
-    // Deze methode is inhoudelijk hetzelfde als het was in de vorige opdracht. Wat verandert is, is dat we nu checken
-    // op optional.isPresent in plaats van optional.isEmpty en we returnen een TelevisionDto in plaats van een Television.
     public TelevisionDto getTelevisionById(Long id) {
-        Optional<Television> televisionOptional = televisionRepository.findById(id);
-        if (televisionOptional.isPresent()){
-            Television tv = televisionOptional.get();
+
+        if (televisionRepository.findById(id).isPresent()){
+            Television tv = televisionRepository.findById(id).get();
+            TelevisionDto dto =transferToDto(tv);
+            if(tv.getCiModule() != null){
+                dto.setCiModuleDto(ciModuleService.transferToDto(tv.getCiModule()));
+            }
+            if(tv.getRemoteController() != null){
+                dto.setRemoteControllerDto(remoteControllerService.transferToDto(tv.getRemoteController()));
+            }
+
             return transferToDto(tv);
         } else {
             throw new RecordNotFoundException("geen televisie gevonden");
         }
     }
 
-    // In deze methode moeten we twee keer een vertaal methode toepassen.
-    // De eerste keer van dto naar televsion, omdat de parameter een dto is.
-    // De tweede keer van television naar dto, omdat de return waarde een dto is.
     public TelevisionDto addTelevision(TelevisionInputDto dto) {
 
         Television tv = transferToTelevision(dto);
@@ -75,43 +91,24 @@ public class TelevisionService {
         return transferToDto(tv);
     }
 
-    // Deze methode is inhoudelijk neit veranderd. Het is alleen verplaatst naar de Service laag.
     public void deleteTelevision(@RequestBody Long id) {
 
         televisionRepository.deleteById(id);
 
     }
 
-    // Deze methode is inhoudelijk niet veranderd, alleen staat het nu in de Service laag en worden er Dto's en
-    // vertaal methodes gebruikt.
-    public TelevisionDto updateTelevision(Long id, TelevisionInputDto newTelevision) {
+    public TelevisionDto updateTelevision(Long id, TelevisionInputDto inputDto) {
 
-        Optional<Television> televisionOptional = televisionRepository.findById(id);
-        if (televisionOptional.isPresent()){
+        if (televisionRepository.findById(id).isPresent()){
 
-            Television television1 = televisionOptional.get();
+            Television tv = televisionRepository.findById(id).get();
 
+            Television tv1 = transferToTelevision(inputDto);
+            tv1.setId(tv.getId());
 
-            television1.setAmbiLight(newTelevision.getAmbiLight());
-            television1.setAvailableSize(newTelevision.getAvailableSize());
-            television1.setAmbiLight(newTelevision.getAmbiLight());
-            television1.setBluetooth(newTelevision.getBluetooth());
-            television1.setBrand(newTelevision.getBrand());
-            television1.setHdr(newTelevision.getHdr());
-            television1.setName(newTelevision.getName());
-            television1.setOriginalStock(newTelevision.getOriginalStock());
-            television1.setPrice(newTelevision.getPrice());
-            television1.setRefreshRate(newTelevision.getRefreshRate());
-            television1.setScreenQuality(newTelevision.getScreenQuality());
-            television1.setScreenType(newTelevision.getScreenType());
-            television1.setSmartTv(newTelevision.getSmartTv());
-            television1.setSold(newTelevision.getSold());
-            television1.setType(newTelevision.getType());
-            television1.setVoiceControl(newTelevision.getVoiceControl());
-            television1.setWifi(newTelevision.getWifi());
-            Television returnTelevision = televisionRepository.save(television1);
+            televisionRepository.save(tv1);
 
-            return transferToDto(returnTelevision);
+            return transferToDto(tv1);
 
         } else {
 
@@ -121,7 +118,6 @@ public class TelevisionService {
 
     }
 
-    // Dit is de vertaal methode van TelevisionInputDto naar Television.
     public Television transferToTelevision(TelevisionInputDto dto){
         var television = new Television();
 
@@ -145,7 +141,6 @@ public class TelevisionService {
         return television;
     }
 
-    // Dit is de vertaal methode van Television naar TelevisionDto
     public TelevisionDto transferToDto(Television television){
         TelevisionDto dto = new TelevisionDto();
 
@@ -167,6 +162,44 @@ public class TelevisionService {
         dto.setOriginalStock(television.getOriginalStock());
         dto.setSold(television.getSold());
 
+        // Als extra op deze transfer methode, voegen we ook de relaties toe.
+        // Hier moeten we eerst een null check voor doen,
+        // omdat we anders in CIModule.transferToDto de get-methodes van "null" aanroepen en dat kan niet.
+        if(television.getCiModule() != null){
+            dto.setCiModuleDto(CIModuleService.transferToDto(television.getCiModule()));
+        }
+
+
         return dto;
+    }
+
+    public void assignRemoteControllerToTelevision(Long id, Long remoteControllerId) {
+        var optionalTelevision = televisionRepository.findById(id);
+        var optionalRemoteController = remoteControllerRepository.findById(remoteControllerId);
+
+        if(optionalTelevision.isPresent() && optionalRemoteController.isPresent()) {
+            var television = optionalTelevision.get();
+            var remoteController = optionalRemoteController.get();
+
+            television.setRemoteController(remoteController);
+            televisionRepository.save(television);
+        } else {
+            throw new RecordNotFoundException();
+        }
+    }
+
+    public void assignCIModuleToTelevision(Long id, Long ciModuleId) {
+        var optionalTelevision = televisionRepository.findById(id);
+        var optionalCIModule = ciModuleRepository.findById(ciModuleId);
+
+        if(optionalTelevision.isPresent() && optionalCIModule.isPresent()) {
+            var television = optionalTelevision.get();
+            var ciModule = optionalCIModule.get();
+
+            television.setCiModule(ciModule);
+            televisionRepository.save(television);
+        } else {
+            throw new RecordNotFoundException();
+        }
     }
 }
