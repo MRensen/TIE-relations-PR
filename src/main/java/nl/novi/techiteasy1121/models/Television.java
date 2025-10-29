@@ -1,6 +1,8 @@
 package nl.novi.techiteasy1121.models;
 
 import jakarta.persistence.*;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 public class Television {
@@ -28,47 +30,66 @@ public class Television {
     private Integer originalStock;
     private Integer sold;
 
+    // Dit is de owner kan van de relatie. Er staat een foreign key in de database
+    @OneToOne
+    RemoteController remoteController;
+
+    // Dit is de owner kan van de relatie. Er staat een foreign key in de database
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ci_module_id")
+    private CIModule ciModule;
+
+    // Dit is de target kant van de relatie. Er staat niks in de database
+
+    @ManyToMany
+    @JoinTable(
+            name = "television_wallbrackets",  // Dit is de naam van de koppeltabel en dus hoe we het in de data.sql moeten aanspreken.
+            joinColumns = @JoinColumn(name = "television"), // Dit is de kolom met het ID van "deze kant" van de relatie
+            inverseJoinColumns = @JoinColumn(name = "wallbracket") // Dit is de kolom met het ID van "de andere kant" van de relatie
+    )
+    List<WallBracket> wallBrackets;
+
 //    constructors hoeven niet per se aangemaakt te worden
-//    // Een default constructor
-//    public Television() {}
-//
-//    // Een constructor met alle gevraagde variable
-//    public Television(
-//            Long id,
-//            String type,
-//            String brand,
-//            String name,
-//            Double price,
-//            Double availableSize,
-//            Double refreshRate,
-//            String screenType,
-//            String screenQuality,
-//            Boolean smartTv,
-//            Boolean wifi,
-//            Boolean voiceControl,
-//            Boolean hdr,
-//            Boolean bluetooth,
-//            Boolean ambiLight,
-//            Integer originalStock,
-//            Integer sold ) {
-//        this.id = id;
-//        this.type = type;
-//        this.brand = brand;
-//        this.name = name;
-//        this.price = price;
-//        this.availableSize = availableSize;
-//        this.refreshRate = refreshRate;
-//        this.screenType = screenType;
-//        this.screenQuality = screenQuality;
-//        this.smartTv = smartTv;
-//        this.wifi = wifi;
-//        this.voiceControl = voiceControl;
-//        this.hdr = hdr;
-//        this.bluetooth = bluetooth;
-//        this.ambiLight = ambiLight;
-//        this.originalStock = originalStock;
-//        this.sold = sold;
-//    }
+    // Een default constructor
+    public Television() {}
+
+    // Een constructor met alle gevraagde variable
+    public Television(
+            Long id,
+            String type,
+            String brand,
+            String name,
+            Double price,
+            Double availableSize,
+            Double refreshRate,
+            String screenType,
+            String screenQuality,
+            Boolean smartTv,
+            Boolean wifi,
+            Boolean voiceControl,
+            Boolean hdr,
+            Boolean bluetooth,
+            Boolean ambiLight,
+            Integer originalStock,
+            Integer sold ) {
+        this.id = id;
+        this.type = type;
+        this.brand = brand;
+        this.name = name;
+        this.price = price;
+        this.availableSize = availableSize;
+        this.refreshRate = refreshRate;
+        this.screenType = screenType;
+        this.screenQuality = screenQuality;
+        this.smartTv = smartTv;
+        this.wifi = wifi;
+        this.voiceControl = voiceControl;
+        this.hdr = hdr;
+        this.bluetooth = bluetooth;
+        this.ambiLight = ambiLight;
+        this.originalStock = originalStock;
+        this.sold = sold;
+    }
 
     //  Alle variable getters
     public Long getId() {
@@ -137,6 +158,18 @@ public class Television {
 
     public Integer getSold() {
         return sold;
+    }
+
+    public RemoteController getRemoteController() {
+        return remoteController;
+    }
+
+    public CIModule getCiModule() {
+        return ciModule;
+    }
+
+    public Collection<WallBracket> getWallBrackets() {
+        return wallBrackets;
     }
 
     //  Alle variable setters
@@ -208,4 +241,15 @@ public class Television {
         this.sold = sold;
     }
 
+    public void setRemoteController(RemoteController remoteController) {
+        this.remoteController = remoteController;
+    }
+
+    public void setCiModule(CIModule ciModule) {
+        this.ciModule = ciModule;
+    }
+
+    public void setWallBrackets(List<WallBracket> wallBrackets) {
+        this.wallBrackets = wallBrackets;
+    }
 }
